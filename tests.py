@@ -2,6 +2,7 @@ import json
 import unittest
 from arcgis import ArcGIS
 
+
 class ArcGISTest(unittest.TestCase):
     """
     Make sure we didn't break stuff

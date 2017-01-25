@@ -1,14 +1,13 @@
-import sys
 from setuptools import setup
 
 install_requires = [
-    "argparse>=1.2.1",
-    "requests>=2.4.3"
+    "aiohttp>=1.2.0",
+    "ujson"
 ]
 
 setup(
     name='arcgis-rest-query',
-    version='0.14',
+    version='0.2',
     description='A tool to download a layer from an ArcGIS web service as GeoJSON',
     author='Ken Schwencke',
     author_email='schwank@gmail.com',
