@@ -57,10 +57,21 @@ class ArcGIS:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self._http_session.__aexit__(exc_type, exc_val, exc_tb)
 
+    async def _do_json_req(self, url: str, params: dict):
+        async with self._http_session.get(url, params=params) as response:
+            if response.status not in {200, 204}:
+                raise Exception("Invalid status: {} for url: {} and params: {}".format(response.status, url, params))
+
+            data = await response.json(loads=ujson.loads)
+            if data.get('error'):
+                raise Exception("Invalid response: {} for url: {} and params: {}".format(data, url, params))
+
+            return data
+
     def _build_request(self, layer):
         url = urljoin(self.url, layer)
         if not url.endswith('/'):
-            url += '/'h
+            url += '/'
         return url
 
     def _build_query_request(self, layer):
@@ -131,15 +142,7 @@ class ArcGIS:
             params.update({'geometryType': self.geom_type})
 
         url = self._build_query_request(layer)
-        async with self._http_session.get(url, params=params) as response:
-            if response.status not in {200, 204}:
-                raise Exception("Invalid status: {} for url: {} and params: {}".format(response.status, url, params))
-
-            data = await response.json(loads=ujson.loads)
-            if data.get('error'):
-                raise Exception("Invalid response: {} for url: {} and params: {}".format(data, url, params))
-
-            return data
+        return await self._do_json_req(url, params)
 
     async def get_descriptor_for_layer(self, layer):
         """
@@ -151,12 +154,8 @@ class ArcGIS:
             if await self.token:
                 params['token'] = await self.token
 
-            async with self._http_session.get(self._build_request(layer), params=params) as response:
-                if response.status not in {200, 204}:
-                    raise Exception("Invalid status: {}".format(response.status))
-
-                response = await response.json(loads=ujson.loads)
-
+            url = self._build_request(layer)
+            response = await self._do_json_req(url, params)
             self._layer_descriptor_cache[layer] = response
         return self._layer_descriptor_cache[layer]
 
@@ -283,12 +282,7 @@ class ArcGIS:
                 'referer': 'http://www.arcgis.com',
             }
             try:
-                async with self._http_session.post(self.token_url, data=token_params) as response:
-                    if response.status not in {200, 204}:
-                        raise Exception("Invalid status: {}".format(response.status))
-
-                    response = await response.json(loads=ujson.loads)
-
+                response = await self._do_json_req(self.token_url, token_params)
                 self._token = response.get('token')
                 if self._token is None:
                     raise Exception("Missing Token from response")
