@@ -3,7 +3,7 @@ import arcgis
 import argparse
 import ujson
 import asyncio
-
+import pprint
 
 async def main():
     parser = argparse.ArgumentParser(description="Output an ArcGIS web layer as GeoJSON")
@@ -23,8 +23,16 @@ async def main():
                     help="Sometimes you need to be explicit about the geometry type you are returning. Must be one of esriGeometryPoint, esriGeometryMultiPoint, esriGeometryPolygon, esriGeometryMultiPoint.")
     parser.add_argument('--count_only', action='store_true',
                     help="Returns only a count of the features that will be returned")
+    parser.add_argument('--pprint_pydata', action='store_true',
+                    help="Pretty Print python data vs json data")
 
     args = parser.parse_args()
+
+    def printer(data):
+        if args.pprint_pydata:
+            pprint.pprint(data, width=300)
+        else:
+            print(ujson.dumps(data))
 
     async with arcgis.ArcGIS(args.url, geom_type=args.geom_type, object_id_field=args.object_id_field) as arc:
         if len(args.layer) > 1:
@@ -32,10 +40,10 @@ async def main():
                 print("Sorry, you can't run a count on multiple layers currently.")
             else:
                 data = await arc.getMultiple(args.layer, where=args.where, fields=args.fields, layer_name_field=args.layer_name_field)
-                print(ujson.dumps(data))
+                printer(data)
         else:
             data = await arc.get(args.layer[0], where=args.where, fields=args.fields, count_only=args.count_only)
-            print(ujson.dumps(data))
+            printer(data)
 
 
 if __name__ == "__main__":
